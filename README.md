@@ -14,11 +14,11 @@ The Plugin Required is
 
 vagrant plugin install vagrant-address for generating the 
 
-vagrant up
-ansible all -m ping
-ansible-playbook ./k8s-setup/01-base-setup.yaml 
-ansible-playbook ./k8s-setup/02-loadbalancer-setup.yaml 
-ansible-playbook ./k8s-setup/03-k8s-master-setup.yaml 
-ansible-playbook ./k8s-setup/04-k8s-minion-setup.yaml 
-ansible-playbook ./k8s-setup/05-k8s-cluster-setup.yaml 
-vagrant destroy -f
+* vagrant up
+* ansible all -m ping
+* ansible-playbook ./k8s-setup/01-base-setup.yaml 
+* ansible-playbook ./k8s-setup/02-loadbalancer-setup.yaml 
+* ansible-playbook ./k8s-setup/03-k8s-master-setup.yaml 
+* ansible-playbook ./k8s-setup/04-k8s-minion-setup.yaml 
+* ansible-playbook ./k8s-setup/05-k8s-cluster-setup.yaml 
+* vagrant destroy -f
