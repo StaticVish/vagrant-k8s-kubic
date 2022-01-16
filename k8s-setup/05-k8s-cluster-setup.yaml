@@ -1,0 +1,46 @@
+---
+- hosts: localhost
+  tasks:
+
+    - name: Install Metrics Server
+      shell: >-
+        kubectl apply -f files/metrics-server-components.yaml
+
+    - name: Add the Haproxy Ingress Controller Helm Repo
+      shell: >-
+        helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+
+    - name: Helm3 add prometheus-community
+      command: >-
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+    - name: Helm3 Update Repo
+      command: >-
+        helm repo update
+
+    - name: Copy over haproxy-ingress-values
+      shell: >-
+        helm install haproxy-ingress haproxy-ingress/haproxy-ingress --create-namespace --namespace ingress-controller --version 0.13.5 -f files/haproxy-ingress-values.yaml
+      ignore_errors: true
+
+    - name: Install Cluster Monitoring
+      shell: >-
+        helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack --create-namespace --namespace=kube-prometheus-stack
+      ignore_errors: true
+
+    - name: Create temporary build directory
+      tempfile:
+        state: directory
+        suffix: build
+      register: buildDir
+
+    - name: Render the Template
+      vars:
+        nodeName: "{{ groups.lbs[0] }}"
+      template:
+        src: ../templates/grafana-ingress.yaml.j2
+        dest: "{{ buildDir.path }}/grafana-ingress.yaml"
+
+    - name: Apply Grafana Ingress
+      shell: >-
+        kubectl apply -f "{{ buildDir.path }}/grafana-ingress.yaml"

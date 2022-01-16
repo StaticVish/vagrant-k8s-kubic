@@ -1,0 +1,33 @@
+---
+- hosts: lbs
+  become: true
+  tasks:
+  - name: Install Podman
+    shell: >- 
+      /sbin/transactional-update reboot --non-interactive --continue pkg install podman
+    register: pkg_status   
+
+  - name: reboot the Node   
+    reboot:
+      reboot_timeout: 300
+    register: reboot_result
+    failed_when: reboot_result.rebooted == false
+    when: pkg_status.stderr == ""
+
+  - name: Configure the haproxy cnf file with hosts
+    template: 
+      src: haproxy.cfg.j2 
+      dest: /etc/haproxy/haproxy.cfg
+
+  - name: Pull haproxy Config in Podman
+    shell: |
+      podman pull haproxy:latest
+
+  - name: Remove the Running Podman Container
+    shell: |
+      podman rm -f haproxy || true
+
+  - name:  Run the Podman Command
+    shell: |
+      podman run -d --net=host --name=haproxy --restart=always -u 0:0 -v /etc/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:rw,Z haproxy:latest
+

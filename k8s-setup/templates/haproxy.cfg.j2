@@ -1,0 +1,93 @@
+global
+  log /dev/log daemon
+  maxconn 32768
+  chroot /var/lib/haproxy
+  user haproxy
+  group haproxy
+  daemon
+  stats socket /var/lib/haproxy/stats user haproxy group haproxy mode 0640 level operator
+  tune.bufsize 32768
+  tune.ssl.default-dh-param 2048
+  ssl-default-bind-ciphers ALL:!aNULL:!eNULL:!EXPORT:!DES:!3DES:!MD5:!PSK:!RC4:!ADH:!LOW@STRENGTH
+
+defaults
+  log     global
+  mode    http
+  option  log-health-checks
+  option  log-separate-errors
+  option  dontlog-normal
+  option  dontlognull
+  option  httplog
+  option  socket-stats
+  retries 3
+  option  redispatch
+  maxconn 10000
+  timeout connect     5s
+  timeout client     50s
+  timeout server    450s
+
+listen stats
+  bind 0.0.0.0:1936
+  bind :::80 v6only
+  stats enable
+  stats uri     /
+  stats refresh 5s
+
+frontend k8s-api
+{% for host in groups.lbs -%}
+  bind {{ hostvars[host]['ansible_facts'].eth0.ipv4.address }}:6443
+  mode tcp
+  option tcplog
+  timeout client 125s
+  default_backend k8s-api
+{% endfor %}  
+
+backend k8s-api
+  mode tcp
+  option tcp-check
+  timeout server 125s
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+{% for host in groups.masters -%}
+  server {{ host }} {{ hostvars[host].ansible_host }}:6443 check
+{% endfor %}
+
+
+frontend k8s-apps-http
+{% for host in groups.lbs -%}
+  bind {{ hostvars[host]['ansible_facts'].eth0.ipv4.address }}:80
+  mode tcp
+  option tcplog
+  timeout client 125s
+  default_backend k8s-apps-http
+{% endfor %}  
+
+backend k8s-apps-http
+  mode tcp
+  option tcp-check
+  timeout server 125s
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+{% for host in groups.minions -%}
+  server {{ host }} {{ hostvars[host].ansible_host }}:80 check
+{% endfor %}
+
+
+frontend k8s-apps-https
+{% for host in groups.lbs -%}
+  bind {{ hostvars[host]['ansible_facts'].eth0.ipv4.address }}:443
+  mode tcp
+  option tcplog
+  timeout client 125s
+  default_backend k8s-apps-https
+{% endfor %}  
+
+backend k8s-apps-https
+  mode tcp
+  option tcp-check
+  timeout server 125s
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+{% for host in groups.minions -%}
+  server {{ host }} {{ hostvars[host].ansible_host }}:443 check
+{% endfor %}

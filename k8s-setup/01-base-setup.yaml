@@ -1,0 +1,37 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Install Python Selinux 
+    shell: >- 
+      /sbin/transactional-update reboot --non-interactive --continue pkg install python3-selinux  
+    register: pkg_status   
+
+  - name: reboot the Node   
+    reboot:
+      reboot_timeout: 300
+    register: reboot_result
+    failed_when: reboot_result.rebooted == false
+    when: pkg_status.stderr == ""
+    
+
+  - name: Configure Static DNS Servers for the Nodes
+    ansible.builtin.lineinfile:
+      path: /etc/sysconfig/network/config
+      regexp: '^NETCONFIG_DNS_STATIC_SERVERS=.*'
+      line: 'NETCONFIG_DNS_STATIC_SERVERS="8.8.8.8 1.1.1.1"'
+      backup: true      
+
+  - name: Restart the NetConfig
+    shell: >- 
+      /sbin/netconfig update -f
+
+  - name: Save the Ip Address of the master
+    shell: >-
+      ip -4 addr show eth0 | grep "inet" | head -1 |awk '{print $2}' | cut -d/ -f1
+    register: IPADDRESS
+
+  - name: Set a hostname
+    shell: >-
+      hostnamectl set-hostname "ip-{{ IPADDRESS.stdout | replace('.','-') }}.sslip.io"
+

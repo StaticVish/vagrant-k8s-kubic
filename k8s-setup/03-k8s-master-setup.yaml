@@ -1,0 +1,41 @@
+---
+- hosts: masters[0]
+  become: true
+  tasks:
+
+  - name: Enable kubicd-init
+    ansible.builtin.systemd:
+      name: kubicd-init
+      state: started
+      enabled: yes
+
+  - name: Enable kubicd
+    ansible.builtin.systemd:
+      name: kubicd
+      state: started
+      enabled: yes  
+
+  - name: Enable salt-master
+    ansible.builtin.systemd:
+      name: salt-master
+      state: started
+      enabled: yes 
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: yes
+
+  - name: Initialize the Kubernetes cluster using kubeadm
+    command: >-
+      kubicctl init --multi-master={{ groups.lbs[0] }}
+
+  - name: Slurp the Remote Kube Config File
+    slurp:
+      src: /etc/kubernetes/admin.conf
+    register: kubeconfig
+
+  - name: Copy Kube Confing under the Home
+    become: false
+    local_action: copy content="{{ kubeconfig.content | b64decode }}" dest="$HOME/.kube/config"
+
+

@@ -1,0 +1,63 @@
+---
+- hosts: minions:masters:!masters[0]
+  become: true
+  tasks:
+  - name: Connect Salt Minion to Salt Masters - Configure
+    copy:
+      dest: /etc/salt/minion.d/master.conf
+      content: |
+        master: {{ groups.masters[0] }}
+
+  - name: Enable salt-minion
+    ansible.builtin.systemd:
+      name: salt-minion
+      state: started
+      enabled: yes 
+
+  - name: Pause for 2 Mins
+    pause:
+      minutes: 2
+
+- name: 
+  hosts: masters[0]
+  become: true
+  tasks:
+  - name: Accept Salt Keys 
+    shell: | 
+      /usr/bin/salt-key --accept-all --yes
+
+  - name: Pause for 1 Mins
+    pause:
+      minutes: 1
+
+  - name: List the Existing Nodes
+    shell: | 
+      /usr/bin/kubicctl node list
+    register: node_list    
+
+  - name: Add the Minions Nodes in the Cluster
+    shell: |
+      /usr/bin/kubicctl node add "{{ item }}" 
+    with_items: "{{ groups.minions }}"
+    when: item not in node_list.stdout
+
+  - name: Creates directory
+    file:
+      path: ~/.kube
+      state: directory
+
+  - name: Creates directory
+    shell: |
+      kubicctl kubeconfig > ~/.kube/config         
+
+  - name: List the Masters
+    shell: |
+      kubectl get nodes -l node-role.kubernetes.io/control-plane= -o custom-columns=name:metadata.name --no-headers          
+    register: masters_list
+
+
+  - name: Add the Masters to the Nodes in the Cluster
+    shell: |
+      /usr/bin/kubicctl node add "{{ item }}" --type=master
+    with_items: "{{ groups.masters }}"
+    when: item not in masters_list.stdout 
