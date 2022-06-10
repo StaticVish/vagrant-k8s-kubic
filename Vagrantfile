@@ -1,7 +1,8 @@
 # -*- mode: ruby -*-
 # vi:set ft=ruby sw=2 ts=2 sts=2:
 
-OS_IMAGE = 'opensuse/Kubic.x86_64'
+OS_IMAGE = "opensuse/Kubic.x86_64"
+BOX_VERSION = "16.0.0.20211207"
 
 NUM_LBS = 1
 NUM_MASTERS = 3
@@ -15,6 +16,7 @@ Vagrant.configure("2") do |config|
   (1..NUM_LBS).each do |i|
     config.vm.define "kubic-lbs-#{i}" do |node|
       node.vm.box = OS_IMAGE
+      node.vm.box_version = BOX_VERSION
       node.vm.synced_folder ".", "/vagrant", disabled: true      
       node.vm.provider :libvirt do |v|
         v.qemu_use_session = false
@@ -28,6 +30,7 @@ Vagrant.configure("2") do |config|
   (1..NUM_MASTERS).each do |i|
     config.vm.define "kubic-masters-#{i}" do |node|
       node.vm.box = OS_IMAGE
+      node.vm.box_version = BOX_VERSION
       node.vm.synced_folder ".", "/vagrant", disabled: true      
       node.vm.provider :libvirt do |v|
         v.qemu_use_session = false
@@ -41,6 +44,7 @@ Vagrant.configure("2") do |config|
   (1..NUM_WORKERS).each do |i|
     config.vm.define "kubic-minions-#{i}" do |node|
       node.vm.box = OS_IMAGE
+      node.vm.box_version = BOX_VERSION
       node.vm.synced_folder ".", "/vagrant", disabled: true      
       node.vm.provider :libvirt do |v|
         v.qemu_use_session = false
